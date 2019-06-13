@@ -1,0 +1,72 @@
+---
+title: "Perhitungan Value at Risk Menggunakan Distribusi Generalized Extreme Value"
+author: "Nurmitra Sari Purba"
+date: "12 Juni 2019"
+output: html_document
+---
+
+## open library
+```{r results='hide', message=FALSE, warning=FALSE}
+if (!require("nortest")) { install.packages("nortest"); require("nortest") }
+if (!require("extRemes")) { install.packages("extRemes"); require("extRemes") }
+if (!require("rugarch")) { install.packages("rugarch"); require("rugarch") }
+if (!require("GAS")) { install.packages("GAS"); require("GAS") }
+```
+
+## open data
+```{r}
+data <- read.csv("Data Historis ASII.csv", sep = ",")
+```
+
+## eksplorasi bentuk distribusi
+```{r}
+hist(data$Terakhir)
+```
+
+## goodness of fit with anderson darling test
+```{r}
+ad.test(data$Terakhir)
+```
+p-value > 0.05 maka gagal tolak H0, data berdistribusi GEV
+
+## get parameters
+
+```{r}
+data2 = as.matrix(data$Terakhir)
+
+fit = fevd(data2,type="GEV")
+summary(fit)
+```
+shape (-0.2102136) < 0 maka data klaim berdistribusi Generalized Extreme Value tipe III (Distribusi Weibull) 
+
+## VaR with CI .95
+```{r}
+VaR1 <- fit$results$par[1] - fit$results$par[2]/fit$results$par[3]*(1-(-log(0.95))^(-fit$results$par[3]))
+VaR1
+```
+
+## VaR with CI .90
+```{r}
+VaR2 <- fit$results$par[1] - fit$results$par[2]/fit$results$par[3]*(1-(-log(0.9))^(-fit$results$par[3]))
+VaR2
+```
+
+## backtesting procedure for the Value at Risk.
+
+```{r}
+VaRTest(0.95,
+        actual=data2,
+        VaR=rep(VaR1, 60))
+```
+
+gagal tolak H0
+
+```{r}
+VaRTest(0.9,
+        actual=data2,
+        VaR=rep(VaR2, 60))
+```
+
+gagal tolak H0 sehingga dapat disimpulkan bahwa model VaR baik digunakan untuk confidence interval 90% maupun 95%
+
+> Kesimpulan dari analisa data closing price saham  bulanan pada PT. Astra Internasional Tbk. (ASII.JK) periode Juni 2015 sampai dengan Juni 2019 adalah data berdistribusi Generalized Extreme Value. Selain itu dalam beberapa bulan kedepan peluang total closing price bulanan melebihi USD8.494856 sebesar 10%. Jadi misalkan dalam 10 bulan kedepan ada satu bulan dimana closing price saham Astra melebihi angka USD8.494856. Lalu untuk VaR dengan confidence interval 95% dapat dikatakan bahwa peluang closing price saham bulanan Astra melebihi USD8.67865 sebesar 5%
